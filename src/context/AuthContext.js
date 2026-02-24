@@ -10,7 +10,7 @@ import { toast } from 'react-toastify';
  * @param {*} data - Datos opcionales a mostrar
  */
 const debugLog = (message, data) => {
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     if (data) {
       console.log(message, data);
     } else {

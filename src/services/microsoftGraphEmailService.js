@@ -4,7 +4,7 @@ import axios from 'axios';
 // Reemplaza el dominio por el de tu proyecto en Firebase
 const EMAIL_BACKEND_URL = 'https://us-central1-costaricacc-planos.cloudfunctions.net/sendEmail';
 // Si implementas validación de API Key en la función, usa la variable de entorno
-const EMAIL_API_KEY = process.env.REACT_APP_EMAIL_API_KEY || '';
+const EMAIL_API_KEY = import.meta.env.REACT_APP_EMAIL_API_KEY || '';
 
 // Envía un correo usando el backend de Firebase Functions
 export const sendEmail = async ({ to, subject, html }) => {

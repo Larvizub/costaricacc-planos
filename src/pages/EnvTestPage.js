@@ -54,11 +54,11 @@ const EnvTestPage = () => {
   const [envVars, setEnvVars] = useState({});
   
   useEffect(() => {
-    // Recopilar todas las variables de entorno que comienzan con REACT_APP_
-    const reactEnvVars = Object.keys(process.env)
-      .filter(key => key.startsWith('REACT_APP_'))
+    // Recopilar variables de entorno de frontend (prefijos permitidos)
+    const reactEnvVars = Object.keys(import.meta.env)
+      .filter(key => key.startsWith('REACT_APP_') || key.startsWith('VITE_'))
       .reduce((obj, key) => {
-        obj[key] = process.env[key] || '[no configurado]';
+        obj[key] = import.meta.env[key] || '[no configurado]';
         return obj;
       }, {});
     
@@ -97,14 +97,14 @@ const EnvTestPage = () => {
           <EnvList>
             <EnvItem>
               <EnvName>REACT_APP_FRESHDESK_DOMAIN:</EnvName>
-              <EnvValue missing={!process.env.REACT_APP_FRESHDESK_DOMAIN}>
-                {process.env.REACT_APP_FRESHDESK_DOMAIN || '[no configurado]'}
+              <EnvValue missing={!import.meta.env.REACT_APP_FRESHDESK_DOMAIN}>
+                {import.meta.env.REACT_APP_FRESHDESK_DOMAIN || '[no configurado]'}
               </EnvValue>
             </EnvItem>
             <EnvItem>
               <EnvName>REACT_APP_FRESHDESK_API_KEY:</EnvName>
-              <EnvValue missing={!process.env.REACT_APP_FRESHDESK_API_KEY}>
-                {process.env.REACT_APP_FRESHDESK_API_KEY ? '[configurado]' : '[no configurado]'}
+              <EnvValue missing={!import.meta.env.REACT_APP_FRESHDESK_API_KEY}>
+                {import.meta.env.REACT_APP_FRESHDESK_API_KEY ? '[configurado]' : '[no configurado]'}
               </EnvValue>
             </EnvItem>
           </EnvList>
@@ -114,7 +114,7 @@ const EnvTestPage = () => {
           <Subtitle>Recomendaciones si las variables no aparecen:</Subtitle>
           <ol style={{ paddingLeft: '20px' }}>
             <li>Asegúrate de que el archivo <code>.env</code> existe en la raíz del proyecto</li>
-            <li>Verifica que las variables comienzan con <code>REACT_APP_</code></li>
+            <li>Verifica que las variables comienzan con <code>REACT_APP_</code> o <code>VITE_</code></li>
             <li>Asegúrate de que no hay espacios alrededor de los signos de igual</li>
             <li><strong>Reinicia el servidor de desarrollo</strong> después de modificar el archivo <code>.env</code></li>
             <li>Si usas Docker, asegúrate de que las variables estén pasadas correctamente al contenedor</li>

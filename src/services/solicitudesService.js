@@ -12,7 +12,7 @@ import { NOTIFICATION_TYPES } from '../config/emailConfig';
  * @param {*} data - Datos opcionales a mostrar
  */
 const debugLog = (message, data) => {
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     if (data) {
       console.log(message, data);
     } else {

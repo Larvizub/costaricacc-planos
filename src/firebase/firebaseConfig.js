@@ -7,7 +7,7 @@ import { getStorage } from 'firebase/storage';
 // Eliminar variable debugLog si no se usa
 /* eslint-disable no-unused-vars */
 const debugLog = (message, data) => {
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     if (data) {
       console.log(message, data);
     } else {
@@ -19,12 +19,12 @@ const debugLog = (message, data) => {
 
 // Configuración de Firebase
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID
+  apiKey: import.meta.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: import.meta.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.REACT_APP_FIREBASE_DATABASE_URL,
+  storageBucket: import.meta.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.REACT_APP_FIREBASE_APP_ID
 };
 
 // Inicializar Firebase
