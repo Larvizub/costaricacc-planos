@@ -3,6 +3,18 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 // BottomNav se renderiza dentro de la app (Dashboard).
 
+function registerServiceWorker() {
+  if (typeof window === 'undefined') return;
+  if (!('serviceWorker' in navigator)) return;
+  if (!import.meta.env.PROD) return;
+
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((error) => {
+      console.warn('No se pudo registrar el service worker:', error);
+    });
+  });
+}
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 // Fallback DOM bottom nav: solo se inyecta si la barra React no existe tras el montaje.
 function injectFallbackBottomNav() {
@@ -121,6 +133,8 @@ if (typeof window !== 'undefined') {
     }, 1200);
   });
 }
+
+registerServiceWorker();
 
 root.render(
   <React.StrictMode>
