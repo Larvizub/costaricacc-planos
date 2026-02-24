@@ -1,4 +1,4 @@
-const CACHE_NAME = 'planos-cccr-v2';
+const CACHE_NAME = 'planos-cccr-v3';
 const APP_SHELL = ['/', '/index.html', '/manifest.json', '/logo192.png', '/logo512.png'];
 
 self.addEventListener('install', (event) => {
