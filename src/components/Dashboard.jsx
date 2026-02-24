@@ -27,8 +27,8 @@ const MainContent = styled.div`
   flex: 1;
   padding: ${theme.spacing.lg};
   
-  @media (max-width: ${theme.breakpoints.md}) {
-    padding-bottom: calc(${theme.spacing.lg} + 80px);
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding-bottom: calc(${theme.spacing.lg} + 96px + env(safe-area-inset-bottom, 0px));
   }
 `;
 
