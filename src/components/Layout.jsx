@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import BottomNav from './BottomNav';
 import { theme } from '../styles/GlobalStyles';
 
 const LayoutContainer = styled.div`
@@ -35,6 +36,7 @@ const ContentWrapper = styled.div`
   
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.sm};
+    padding-bottom: calc(${theme.spacing.sm} + 104px + env(safe-area-inset-bottom, 0px));
   }
 `;
 
@@ -58,6 +60,8 @@ const Layout = ({ children, title }) => {
           {children}
         </ContentWrapper>
       </MainContent>
+
+      <BottomNav />
       
       <Footer />
     </LayoutContainer>
