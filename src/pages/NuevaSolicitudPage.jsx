@@ -199,8 +199,6 @@ const NuevaSolicitudPage = () => {
         toast.success('Solicitud creada con éxito');
         setSolicitudEnviada(true); // Marcar como enviada
 
-        // Freshdesk disabled: skipping check for freshDeskTickets
-
         // Redirigir a la lista de solicitudes
         navigate('/solicitudes');
       } catch (error) {
@@ -227,8 +225,6 @@ const NuevaSolicitudPage = () => {
       }
     }
   });
-  
-  // Freshdesk integration disabled: no freshdesk info state
   
   // Manejar cambios en los checkboxes de servicios contratados
   const handleServicioChange = (e) => {
@@ -422,8 +418,6 @@ const NuevaSolicitudPage = () => {
                 />
               </FormSection>
             )}
-            
-            {/* Freshdesk integration disabled: ticket info not shown */}
             
             <ButtonGroup>
               <Button 

@@ -6,7 +6,7 @@ import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase/firebaseConfig';
 import { 
   FaArrowLeft, FaDownload, FaCheck, FaTimes, FaSpinner, FaClock, 
-  FaListAlt, FaComments, FaFile, FaUsers, FaTicketAlt, FaExternalLinkAlt 
+  FaListAlt, FaComments, FaFile, FaUsers 
 } from 'react-icons/fa';
 import { theme } from '../styles/GlobalStyles';
 import Layout from '../components/Layout';
@@ -20,7 +20,6 @@ import { useAuth } from '../context/AuthContext';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { updateRecord, uploadFile } from '../utils/firebaseHelpers';
 import useAsync from '../hooks/useAsync';
-import freshdeskService from '../services/freshdeskService';
 import emailNotificationService from '../services/emailNotificationService';
 import { NOTIFICATION_TYPES } from '../config/emailConfig';
 
@@ -263,126 +262,6 @@ const ApprovalActions = styled.div`
   justify-content: flex-end;
 `;
 
-// Estilos para tickets
-const TicketsSection = styled(Section)`
-  margin-top: ${theme.spacing.xl};
-`;
-
-const TicketsList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing.md};
-`;
-
-const TicketItem = styled.div`
-  display: flex;
-  align-items: center;
-  padding: ${theme.spacing.md};
-  border-radius: ${theme.borderRadius.medium};
-  border: 1px solid ${({ status }) => 
-    status === 'open' ? `${theme.colors.info}30` : theme.colors.border};
-  background-color: ${({ status }) => 
-    status === 'open' ? `${theme.colors.info}05` : theme.colors.background};
-  
-  .ticket-icon {
-    margin-right: ${theme.spacing.md};
-    color: ${({ status }) => 
-      status === 'open' ? theme.colors.info : theme.colors.textLight};
-    font-size: 1.5rem;
-  }
-  
-  .ticket-info {
-    flex: 1;
-  }
-  
-  .ticket-title {
-    font-weight: 500;
-    margin-bottom: ${theme.spacing.xs};
-    color: ${theme.colors.text};
-  }
-  
-  .ticket-meta {
-    color: ${theme.colors.textLight};
-    font-size: 0.9rem;
-  }
-  
-  .ticket-status {
-    display: inline-flex;
-    align-items: center;
-    padding: ${theme.spacing.xs} ${theme.spacing.sm};
-    border-radius: ${theme.borderRadius.small};
-    font-size: 0.85rem;
-    margin-right: ${theme.spacing.md};
-    gap: ${theme.spacing.xs};
-    
-    background-color: ${({ status }) => 
-      status === 'open' ? `${theme.colors.info}20` : `${theme.colors.textLight}15`};
-    color: ${({ status }) => 
-      status === 'open' ? theme.colors.info : theme.colors.textLight};
-  }
-  
-  .ticket-link {
-    margin-left: auto;
-  }
-  
-  @media (max-width: ${theme.breakpoints.sm}) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: ${theme.spacing.sm};
-    
-    .ticket-icon {
-      margin-right: 0;
-      margin-bottom: ${theme.spacing.sm};
-    }
-    
-    .ticket-link {
-      margin-left: 0;
-      margin-top: ${theme.spacing.sm};
-    }
-  }
-`;
-
-const TicketLink = styled.a`
-  display: inline-flex;
-  align-items: center;
-  gap: ${theme.spacing.xs};
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  border-radius: ${theme.borderRadius.small};
-  font-size: 1rem;
-  font-weight: 600;
-  background-color: ${theme.colors.primary};
-  color: white !important; /* Forzar color blanco siempre */
-  text-decoration: none;
-  transition: all 0.2s ease-in-out;
-  text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2); /* Sombra para mejorar legibilidad */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15); /* Sombra para dar profundidad */
-  letter-spacing: 0.5px; /* Mejor espaciado entre letras */
-  
-  &:hover {
-    background-color: ${theme.colors.primaryDark};
-    transform: translateY(-1px); /* Ligero efecto de elevación */
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-  }
-  
-  &:active {
-    transform: translateY(0px);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-  }
-  
-  svg:last-child {
-    font-size: 0.8rem;
-    margin-left: 2px;
-  }
-`;
-
-const NoTicketsMessage = styled.div`
-  padding: ${theme.spacing.lg};
-  text-align: center;
-  color: ${theme.colors.textLight};
-  border: 1px dashed ${theme.colors.border};
-  border-radius: ${theme.borderRadius.medium};
-`;
-
 // Obtener icono según el estado
 const getStatusIcon = (status) => {
   switch (status) {
@@ -610,18 +489,6 @@ const DetalleSolicitudPage = () => {
               })();
             }
             
-            // Freshdesk disabled: skip client-side creation of tickets
-            (async () => {
-              try {
-                const currentGroup = getCurrentApprovalGroup(solicitudData);
-                if (currentGroup) {
-                  console.info('Freshdesk disabled: skipping creation of initial ticket for', currentGroup.id);
-                }
-              } catch (err) {
-                console.warn('Error checking for initial ticket (ignored):', err);
-              }
-            })();
-            
             setSolicitud(solicitudData);
           } else {
             toast.error('La solicitud no existe');
@@ -740,23 +607,6 @@ const DetalleSolicitudPage = () => {
         updateData.fecha_aprobacion = new Date().toISOString();
       }
       
-      // Manejar la transición de tickets en Freshdesk
-      try {
-        const ticketResult = await freshdeskService.handleApprovalTransition(
-          solicitud, 
-          currentGroup.id, 
-          nextGroup ? nextGroup.id : null,
-          currentUser.displayName || currentUser.email
-        );
-        
-        console.log('Resultado de la gestión de tickets (no-aplicado):', ticketResult);
-        // Freshdesk disabled: do not persist ticket changes to the solicitud
-      } catch (ticketError) {
-        console.error('Error en la gestión de tickets de Freshdesk:', ticketError);
-        // No bloqueamos el flujo de aprobación por un error en los tickets
-        toast.warning('Se aprobó la solicitud pero hubo un problema al actualizar los tickets de soporte');
-      }
-      
       console.log('Enviando actualización de aprobación:', updateData);
       
       // Actualizar en Firebase
@@ -864,24 +714,6 @@ const DetalleSolicitudPage = () => {
           reason: `Rechazado por ${currentGroup.name}. Requiere revisión de documentos.`
         }
       };
-      
-      // Manejar transición de tickets en Freshdesk
-      try {
-        // Cerrar el ticket actual
-        const ticketResult = await freshdeskService.handleRejectionTransition(
-          solicitud,
-          currentGroup.id,
-          areasSostenibilidadGroup.id,
-          currentUser.displayName || currentUser.email,
-          `Rechazado por ${currentGroup.name}. Requiere revisión de documentos.`
-        );
-        
-        console.log('Resultado de la gestión de tickets en rechazo (no-aplicado):', ticketResult);
-        // Freshdesk disabled: do not persist ticket changes
-      } catch (ticketError) {
-        console.error('Error en la gestión de tickets de Freshdesk:', ticketError);
-        toast.warning('Se procesó el rechazo pero hubo un problema al actualizar los tickets de soporte');
-      }
       
       console.log('Enviando actualización de rechazo:', updateData);
       
@@ -1528,64 +1360,6 @@ const DetalleSolicitudPage = () => {
           </Card>
         </Section>
         
-        <TicketsSection>
-          <SectionTitle>
-            <FaTicketAlt /> Tickets de Soporte
-          </SectionTitle>
-          <Card>
-            <Card.Content>
-              {solicitud.freshDeskTickets && Object.keys(solicitud.freshDeskTickets).length > 0 ? (
-                <TicketsList>
-                  {Object.keys(solicitud.freshDeskTickets).map(groupId => {
-                    const ticket = solicitud.freshDeskTickets[groupId];
-                    const group = approvalGroups[groupId] || { name: 'Departamento' };
-                    
-                    return (
-                      <TicketItem key={groupId} status={ticket.status}>
-                        <div className="ticket-icon">
-                          <FaTicketAlt />
-                        </div>
-                        <div className="ticket-info">
-                          <div className="ticket-title">
-                            Ticket #{ticket.ticketId} - {group.name}
-                          </div>
-                          <div className="ticket-meta">
-                            <div className="ticket-status">
-                              {ticket.status === 'open' ? (
-                                <><FaClock /> Abierto</>
-                              ) : (
-                                <><FaCheck /> Cerrado</>
-                              )}
-                            </div>
-                            {ticket.status === 'open' ? (
-                              `Creado el ${formatDateTime(ticket.createdAt)}`
-                            ) : (
-                              `Cerrado el ${formatDateTime(ticket.closedAt)} por ${ticket.closedBy || 'un usuario'}`
-                            )}
-                          </div>
-                        </div>
-                        <div className="ticket-link">
-                          <TicketLink 
-                            href={ticket.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            title="Ver en Fresh Desk"
-                          >
-                            Ver ticket <FaExternalLinkAlt />
-                          </TicketLink>
-                        </div>
-                      </TicketItem>
-                    );
-                  })}
-                </TicketsList>
-              ) : (
-                <NoTicketsMessage>
-                  No hay tickets de soporte asociados a esta solicitud.
-                </NoTicketsMessage>
-              )}
-            </Card.Content>
-          </Card>
-        </TicketsSection>
       </DetailContainer>
     </Layout>
   );

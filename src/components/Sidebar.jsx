@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { NavLink } from 'react-router-dom';
-import { FaHome, FaFileAlt, FaMapMarkedAlt, FaUsers, FaChartBar, FaCog, FaTicketAlt, FaBell } from 'react-icons/fa';
+import { FaHome, FaFileAlt, FaMapMarkedAlt, FaUsers, FaChartBar, FaCog, FaBell } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
 
@@ -133,10 +133,6 @@ const Sidebar = ({ isOpen, onClose }) => {
             <NavItem to="/configuracion" onClick={onClose}>
               <NavIcon><FaCog /></NavIcon>
               <NavText>Configuración</NavText>
-            </NavItem>
-            <NavItem to="/diagnostico-freshdesk" onClick={onClose}>
-              <NavIcon><FaTicketAlt /></NavIcon>
-              <NavText>Diagnóstico FreshDesk</NavText>
             </NavItem>
           </NavSection>
         )}

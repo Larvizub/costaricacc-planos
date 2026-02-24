@@ -93,24 +93,6 @@ const EnvTestPage = () => {
         </Card>
         
         <Card>
-          <Subtitle>Variables específicas para FreshDesk</Subtitle>
-          <EnvList>
-            <EnvItem>
-              <EnvName>REACT_APP_FRESHDESK_DOMAIN:</EnvName>
-              <EnvValue missing={!import.meta.env.REACT_APP_FRESHDESK_DOMAIN}>
-                {import.meta.env.REACT_APP_FRESHDESK_DOMAIN || '[no configurado]'}
-              </EnvValue>
-            </EnvItem>
-            <EnvItem>
-              <EnvName>REACT_APP_FRESHDESK_API_KEY:</EnvName>
-              <EnvValue missing={!import.meta.env.REACT_APP_FRESHDESK_API_KEY}>
-                {import.meta.env.REACT_APP_FRESHDESK_API_KEY ? '[configurado]' : '[no configurado]'}
-              </EnvValue>
-            </EnvItem>
-          </EnvList>
-        </Card>
-        
-        <Card>
           <Subtitle>Recomendaciones si las variables no aparecen:</Subtitle>
           <ol style={{ paddingLeft: '20px' }}>
             <li>Asegúrate de que el archivo <code>.env</code> existe en la raíz del proyecto</li>

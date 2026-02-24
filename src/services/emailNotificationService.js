@@ -7,7 +7,6 @@ class EmailNotificationService {
     this.init();
   }
 
-  // Eliminado: inicialización de EmailJS
   init() {
     this.initialized = true;
   }

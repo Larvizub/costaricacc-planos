@@ -1,8 +1,3 @@
-// Configuración de EmailJS
-export const EMAIL_CONFIG = {
-// ...otras configuraciones de email si aplica...
-};
-
 // Configuración de áreas y correos de aprobación - Centro de Convenciones de Costa Rica
 export const APPROVAL_AREAS = {
   'areas_sostenibilidad': {

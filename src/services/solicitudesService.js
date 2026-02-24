@@ -1,7 +1,6 @@
 import { db } from '../firebase/firebaseConfig';
 import { ref, set, get, update } from 'firebase/database';
 import { toast } from 'react-toastify';
-import * as freshDeskService from './freshdeskService';
 import { approvalGroups } from '../components/ApprovalFlow';
 import emailNotificationService from './emailNotificationService';
 import { NOTIFICATION_TYPES } from '../config/emailConfig';
@@ -33,7 +32,6 @@ export const createSolicitud = async (solicitudData) => {
     // Permite incluir adjuntos de referencia en la creación
     const initialData = {
       ...solicitudData,
-      freshDeskTickets: {},
       adjuntosReferencia: solicitudData.adjuntosReferencia || [] // <-- adjuntos para orientar al dibujante
     };
     
@@ -47,12 +45,6 @@ export const createSolicitud = async (solicitudData) => {
       id: solicitudId
     };
     
-  // Determinar el primer grupo de aprobación (se mantiene por compatibilidad)
-  // Nota: Freshdesk está deshabilitado, no se usará para crear tickets.
-    
-    // Freshdesk integration disabled: do not create tickets or update freshDeskTickets.
-    console.info('Freshdesk disabled: skipping ticket creation for new solicitud');
-    
     // Enviar notificaciones por correo
     try {
       // Determinar los grupos requeridos para esta solicitud
@@ -60,8 +52,6 @@ export const createSolicitud = async (solicitudData) => {
         serviciosContratados: solicitudData.serviciosContratados
       });
 
-  // No ticket ids to include since Freshdesk is disabled
-      
       // Normalizar requiredGroups a claves de área (strings) si vienen como objetos
       const normalizedRequiredGroups = Array.isArray(requiredGroups) && requiredGroups.length > 0 && typeof requiredGroups[0] === 'string'
         ? requiredGroups
@@ -200,29 +190,8 @@ export const updateApprovalStatus = async (solicitudId, approvalData, groupInfo,
       }
     });
     
-    // Gestionar tickets de Fresh Desk
-    const currentFreshDeskTickets = currentData.freshDeskTickets || {};
-    let updatedFreshDeskTickets = { ...currentFreshDeskTickets };
-    
-    try {
-      // 1. Si existe un ticket para este grupo, actualizarlo
-      if (currentFreshDeskTickets[groupInfo.id] && currentFreshDeskTickets[groupInfo.id].ticketId) {
-        const ticketId = currentFreshDeskTickets[groupInfo.id].ticketId;
-        
-        // Cerrar el ticket del grupo actual
-        await freshDeskService.closeTicket(ticketId);
-        
-        // Actualizar el estado del ticket en la base de datos
-        updatedFreshDeskTickets[groupInfo.id] = {
-          ...updatedFreshDeskTickets[groupInfo.id],
-          status: 'closed',
-          closedAt: new Date().toISOString(),
-          closedBy: userData.name || userData.email || 'Usuario del sistema'
-        };
-      }
-      
-      // 2. Si la acción es 'aprobado', crear ticket para el siguiente grupo (si existe)
-      if (action === 'aprobado') {
+    // Si la acción es 'aprobado', notificar al siguiente grupo (si existe)
+    if (action === 'aprobado') {
   // Obtener todos los grupos requeridos para esta solicitud
   const requiredGroups = Object.values(approvalGroups)
           .filter(group => {
@@ -239,12 +208,10 @@ export const updateApprovalStatus = async (solicitudId, approvalData, groupInfo,
         // Buscar el índice del grupo actual
         const currentGroupIndex = requiredGroups.findIndex(g => g.id === groupInfo.id);
         
-        // Si hay un siguiente grupo, crear ticket para él
+        // Si hay un siguiente grupo, enviar notificación para su etapa
   if (currentGroupIndex !== -1 && currentGroupIndex < requiredGroups.length - 1) {
           const nextGroup = requiredGroups[currentGroupIndex + 1];
           
-            // Freshdesk integration disabled: skip ticket creation and simply notify the next group
-            console.info('Freshdesk disabled: skipping ticket creation for next group', nextGroup.id);
             try {
               console.log(`📣 Notificando al siguiente grupo ${nextGroup.name} (${nextGroup.id}) que la solicitud está en su etapa`);
               await emailNotificationService.sendNotificationToAreas({
@@ -262,14 +229,6 @@ export const updateApprovalStatus = async (solicitudId, approvalData, groupInfo,
               console.error(`❌ Error notificando al siguiente grupo ${nextGroup.name}:`, notifyErr);
             }
         }
-      }
-      
-  // Freshdesk disabled: do not add freshDeskTickets to cleanData
-      
-    } catch (freshDeskError) {
-      console.error('Error al gestionar tickets de Fresh Desk:', freshDeskError);
-      // No detener el flujo si hay error en Fresh Desk
-      toast.warning('La solicitud se actualizó, pero hubo un problema con los tickets de soporte.');
     }
     
     // Actualizar historial con área
@@ -297,8 +256,6 @@ export const updateApprovalStatus = async (solicitudId, approvalData, groupInfo,
   // Determinar los grupos requeridos para esta solicitud (como claves)
   const requiredGroups = getRequiredApprovalGroups(updatedData);
 
-      // Freshdesk disabled: no ticket IDs to include in notifications
-      
         if (action === 'aprobado') {
           console.log('🔔 Preparando notifyStatusUpdate para acción (aprobado):', {
             solicitudId,
@@ -312,7 +269,6 @@ export const updateApprovalStatus = async (solicitudId, approvalData, groupInfo,
           applicantName: updatedData.createdByName || updatedData.nombreCompleto || 'Solicitante',
           applicantEmail: updatedData.createdByEmail || updatedData.email || '',
           jobPosition: updatedData.jobPosition || updatedData.puesto || '',
-          // freshdeskTicket intentionally omitted (Freshdesk disabled)
           status: 'approved',
           message: `Aprobado por ${userData.name || userData.email} del área ${groupInfo.name}`,
           // Asegurarse de pasar solo las claves de área (strings)
@@ -333,7 +289,6 @@ export const updateApprovalStatus = async (solicitudId, approvalData, groupInfo,
           applicantName: updatedData.createdByName || updatedData.nombreCompleto || 'Solicitante',
           applicantEmail: updatedData.createdByEmail || updatedData.email || '',
           jobPosition: updatedData.jobPosition || updatedData.puesto || '',
-          // freshdeskTicket intentionally omitted (Freshdesk disabled)
           status: 'rejected',
           message: `Rechazado por ${userData.name || userData.email} del área ${groupInfo.name}`,
           // Asegurarse de pasar solo las claves de área (strings)
@@ -405,8 +360,6 @@ export const actualizarEstadoSolicitud = async (solicitudId, nuevoEstado, coment
     try {
       debugLog('Enviando notificaciones de cambio de estado...');
 
-      // Freshdesk disabled: no ticket IDs to include in notifications
-      
       // Normalizar approvalAreas antes de notificar
       const normalizedApprovalAreasForStatus = Array.isArray(solicitudActual.approvalAreas) && solicitudActual.approvalAreas.length > 0 && typeof solicitudActual.approvalAreas[0] === 'string'
         ? solicitudActual.approvalAreas
@@ -419,7 +372,6 @@ export const actualizarEstadoSolicitud = async (solicitudId, nuevoEstado, coment
         applicantName: solicitudActual.createdByName || solicitudActual.nombreCompleto || 'Solicitante',
         applicantEmail: solicitudActual.createdByEmail || solicitudActual.email || '',
         jobPosition: solicitudActual.jobPosition || solicitudActual.puesto || '',
-        // freshdeskTicket intentionally omitted (Freshdesk disabled)
         status: nuevoEstado,
         approvalAreas: normalizedApprovalAreasForStatus,
         message: comentario

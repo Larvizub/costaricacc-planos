@@ -7,11 +7,9 @@ import SolicitudesPage from '../pages/SolicitudesPage';
 import PlanosPage from '../pages/PlanosPage';
 import HomePage from '../pages/HomePage';
 import EnvTestPage from '../pages/EnvTestPage';
-import FreshdeskDiagnosticPage from '../pages/FreshdeskDiagnosticPage';
 import NotificationAdminPage from '../pages/NotificationAdminPage';
 import EmailDiagnosticPage from '../pages/EmailDiagnosticPage';
 import NotificationTestPage from '../pages/NotificationTestPage';
-// import EmailJSTestPage from '../pages/EmailJSTestPage';
 import FileUploadTestPage from '../pages/FileUploadTestPage';
 
 const AppRoutes = () => {
@@ -48,15 +46,6 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <EnvTestPage />
-          </ProtectedRoute>
-        } 
-      />
-      
-      <Route 
-        path="/freshdesk-diagnostic" 
-        element={
-          <ProtectedRoute>
-            <FreshdeskDiagnosticPage />
           </ProtectedRoute>
         } 
       />
