@@ -1,0 +1,13 @@
+{
+  "name": "functions",
+  "description": "Firebase Functions para envío de correos con Microsoft Graph",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.10.2",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "firebase-functions": "^4.0.0"
+  }
+}

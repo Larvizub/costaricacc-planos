@@ -1,0 +1,22 @@
+{
+  "projects": {
+    "default": "costaricacc-planos"
+  },
+  "targets": {
+    "cccr-aprobacion-de-planos": {
+      "hosting": {
+        "costaricacc-planos": [
+          "costaricacc-planos"
+        ]
+      }
+    },
+    "costaricacc-planos": {
+      "hosting": {
+        "costaricacc-planos": [
+          "costaricacc-planos"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
