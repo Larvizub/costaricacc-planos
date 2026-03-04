@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import { ThemeProvider } from 'styled-components';
@@ -8,13 +8,16 @@ import GlobalStyles, { theme } from './styles/GlobalStyles';
 import ProtectedRoute from './components/ProtectedRoute';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
-import SolicitudesPage from './pages/SolicitudesPage';
-import NuevaSolicitudPage from './pages/NuevaSolicitudPage';
-import DetalleSolicitudPage from './pages/DetalleSolicitudPage';
-import PlanosPage from './pages/PlanosPage';
-import Profile from './pages/Profile';
-import EditProfilePage from './pages/EditProfilePage';
-import UsersPage from './pages/UsersPage';
+
+const SolicitudesPage = lazy(() => import('./pages/SolicitudesPage'));
+const NuevaSolicitudPage = lazy(() => import('./pages/NuevaSolicitudPage'));
+const DetalleSolicitudPage = lazy(() => import('./pages/DetalleSolicitudPage'));
+const PlanosPage = lazy(() => import('./pages/PlanosPage'));
+const Profile = lazy(() => import('./pages/Profile'));
+const EditProfilePage = lazy(() => import('./pages/EditProfilePage'));
+const UsersPage = lazy(() => import('./pages/UsersPage'));
+
+const RouteLoader = () => <div style={{ padding: '16px' }}>Cargando modulo...</div>;
 
 function App() {
   return (
@@ -33,7 +36,8 @@ function App() {
             draggable
             pauseOnHover
           />
-          <Routes>
+          <Suspense fallback={<RouteLoader />}>
+            <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
             
@@ -74,7 +78,8 @@ function App() {
             } />
             
             <Route path="*" element={<HomePage />} />
-          </Routes>
+            </Routes>
+          </Suspense>
         </AuthProvider>
       </ThemeProvider>
     </Router>

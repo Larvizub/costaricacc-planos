@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useDeferredValue, useMemo, useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -145,6 +145,8 @@ const SolicitudesPage = () => {
     fechaDesde: '',
     fechaHasta: ''
   });
+
+  const deferredBusqueda = useDeferredValue(filtros.busqueda);
   
   // Manejar cambios en los filtros
   const handleFilterChange = (filterName, value) => {
@@ -165,11 +167,31 @@ const SolicitudesPage = () => {
           id: key,
           ...solicitudesData[key]
         }));
+
+        const normalizedSolicitudes = solicitudesList.map((solicitud) => {
+          const fechaEventoTs = solicitud.fechaEvento ? new Date(solicitud.fechaEvento).getTime() : null;
+          const fechaSolicitudTs = solicitud.fechaSolicitud ? new Date(solicitud.fechaSolicitud).getTime() : 0;
+          const searchBlob = [
+            solicitud.nombreEvento,
+            solicitud.salonEvento,
+            solicitud.codigoEvento
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+
+          return {
+            ...solicitud,
+            _fechaEventoTs: fechaEventoTs,
+            _fechaSolicitudTs: Number.isFinite(fechaSolicitudTs) ? fechaSolicitudTs : 0,
+            _searchBlob: searchBlob
+          };
+        });
         
         // Ordenar por fecha de solicitud (más reciente primero)
-        solicitudesList.sort((a, b) => new Date(b.fechaSolicitud) - new Date(a.fechaSolicitud));
+        normalizedSolicitudes.sort((a, b) => b._fechaSolicitudTs - a._fechaSolicitudTs);
         
-        setSolicitudes(solicitudesList);
+        setSolicitudes(normalizedSolicitudes);
       } else {
         setSolicitudes([]);
       }
@@ -181,26 +203,24 @@ const SolicitudesPage = () => {
   }, []);
   
   // Filtrar solicitudes según los criterios
-  const solicitudesFiltradas = solicitudes.filter(solicitud => {
-    // Filtro por texto de búsqueda
-    const busquedaMatch = filtros.busqueda === '' || 
-      solicitud.nombreEvento?.toLowerCase().includes(filtros.busqueda.toLowerCase()) ||
-      solicitud.salonEvento?.toLowerCase().includes(filtros.busqueda.toLowerCase()) ||
-      solicitud.codigoEvento?.toLowerCase().includes(filtros.busqueda.toLowerCase());
-    
-    // Filtro por estado
-    const estadoMatch = filtros.estado === 'todos' || solicitud.status === filtros.estado;
-    
-    // Filtro por fecha desde
-    const fechaDesdeMatch = !filtros.fechaDesde || 
-      new Date(solicitud.fechaEvento) >= new Date(filtros.fechaDesde);
-    
-    // Filtro por fecha hasta
-    const fechaHastaMatch = !filtros.fechaHasta || 
-      new Date(solicitud.fechaEvento) <= new Date(filtros.fechaHasta);
-    
-    return busquedaMatch && estadoMatch && fechaDesdeMatch && fechaHastaMatch;
-  });
+  const solicitudesFiltradas = useMemo(() => {
+    const busqueda = deferredBusqueda.trim().toLowerCase();
+    const fechaDesdeTs = filtros.fechaDesde ? new Date(filtros.fechaDesde).getTime() : null;
+    const fechaHastaTs = filtros.fechaHasta ? new Date(filtros.fechaHasta).getTime() : null;
+
+    return solicitudes.filter((solicitud) => {
+      const busquedaMatch = !busqueda || solicitud._searchBlob?.includes(busqueda);
+      const estadoMatch = filtros.estado === 'todos' || solicitud.status === filtros.estado;
+
+      const fechaEventoTs = solicitud._fechaEventoTs;
+      const fechaDesdeMatch = !fechaDesdeTs || (fechaEventoTs && fechaEventoTs >= fechaDesdeTs);
+      const fechaHastaMatch = !fechaHastaTs || (fechaEventoTs && fechaEventoTs <= fechaHastaTs);
+
+      return busquedaMatch && estadoMatch && fechaDesdeMatch && fechaHastaMatch;
+    });
+  }, [deferredBusqueda, filtros.estado, filtros.fechaDesde, filtros.fechaHasta, solicitudes]);
+
+  const tableColumns = useMemo(() => getTableColumns(navigate), [navigate]);
   
   // Navegar a la página de creación de solicitud
   const handleNuevaSolicitud = () => {
@@ -282,7 +302,7 @@ const SolicitudesPage = () => {
           />
         ) : solicitudesFiltradas.length > 0 ? (
           <Table
-            columns={getTableColumns(navigate)}
+            columns={tableColumns}
             data={solicitudesFiltradas}
             pagination
             rowsPerPage={10}

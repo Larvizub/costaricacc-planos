@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useDeferredValue, useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { theme } from '../styles/GlobalStyles';
@@ -203,11 +203,11 @@ const truncateText = (text, maxLength = 30) => {
 const PlanosPage = () => {
   const navigate = useNavigate();
   const [solicitudes, setSolicitudes] = useState([]);
-  const [filteredSolicitudes, setFilteredSolicitudes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('todos');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   
   // Cargar solicitudes con planos desde Firebase
   useEffect(() => {
@@ -235,7 +235,21 @@ const PlanosPage = () => {
               solicitud.planoSubidoEn || 
               (estadosValidos.includes(solicitud.status))
             ) {
-              solicitudesData.push(solicitud);
+              const searchBlob = [
+                solicitud.nombreEvento,
+                solicitud.salonEvento,
+                solicitud.codigoEvento,
+                solicitud.createdByName,
+                solicitud.createdByEmail
+              ]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+
+              solicitudesData.push({
+                ...solicitud,
+                _searchBlob: searchBlob
+              });
             }
           });
           
@@ -247,10 +261,8 @@ const PlanosPage = () => {
           });
           
           setSolicitudes(solicitudesData);
-          setFilteredSolicitudes(solicitudesData);
         } else {
           setSolicitudes([]);
-          setFilteredSolicitudes([]);
         }
       } catch (err) {
         console.error('Error al cargar planos:', err);
@@ -269,37 +281,17 @@ const PlanosPage = () => {
     return () => unsubscribe();
   }, []);
   
-  // Actualizar filtros cuando cambia el término de búsqueda o el filtro activo
-  useEffect(() => {
-    let filtered = [...solicitudes];
-    
-    // Aplicar filtro por estado
-    if (activeFilter !== 'todos') {
-      filtered = filtered.filter(solicitud => {
-        // Normalizar el estado para evitar problemas de espacios, mayúsculas, etc.
-        let status = (solicitud.status || 'pendiente').toString().trim().toLowerCase();
-        let filter = activeFilter.toString().trim().toLowerCase();
-        return status === filter;
-      });
-    }
-    
-    // Aplicar búsqueda de texto
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(solicitud => {
-        // Buscar en múltiples campos, verificando que existan antes
-        return (
-          (solicitud.nombreEvento && solicitud.nombreEvento.toLowerCase().includes(searchLower)) ||
-          (solicitud.salonEvento && solicitud.salonEvento.toLowerCase().includes(searchLower)) ||
-          (solicitud.codigoEvento && solicitud.codigoEvento.toLowerCase().includes(searchLower)) ||
-          (solicitud.createdByName && solicitud.createdByName.toLowerCase().includes(searchLower)) ||
-          (solicitud.createdByEmail && solicitud.createdByEmail.toLowerCase().includes(searchLower))
-        );
-      });
-    }
-    
-    setFilteredSolicitudes(filtered);
-  }, [searchTerm, activeFilter, solicitudes]);
+  const filteredSolicitudes = useMemo(() => {
+    const normalizedFilter = activeFilter.toString().trim().toLowerCase();
+    const searchLower = deferredSearchTerm.trim().toLowerCase();
+
+    return solicitudes.filter((solicitud) => {
+      const status = (solicitud.status || 'pendiente').toString().trim().toLowerCase();
+      const statusMatch = normalizedFilter === 'todos' || status === normalizedFilter;
+      const searchMatch = !searchLower || solicitud._searchBlob?.includes(searchLower);
+      return statusMatch && searchMatch;
+    });
+  }, [activeFilter, deferredSearchTerm, solicitudes]);
   
   // Manejar cambio de filtro
   const handleFilterChange = (filter) => {
