@@ -1,6 +1,13 @@
 // Configuración de Firebase
 import { initializeApp } from 'firebase/app';
-import { getAuth, OAuthProvider, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import {
+  getAuth,
+  OAuthProvider,
+  GoogleAuthProvider,
+  signInWithPopup,
+  setPersistence,
+  browserLocalPersistence
+} from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
 
@@ -34,6 +41,12 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getDatabase(app);
 export const storage = getStorage(app);
+
+// Mantener sesión persistente entre recargas y periodos de inactividad del navegador.
+// Si falla, Firebase mantiene su comportamiento por defecto.
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.warn('No se pudo establecer persistencia local de sesión:', error);
+});
 
 // Configuración para proveedores de autenticación
 const googleProvider = new GoogleAuthProvider();

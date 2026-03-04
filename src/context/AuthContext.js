@@ -387,27 +387,6 @@ export const AuthProvider = ({ children }) => {
           console.warn('No se pudieron refrescar roles al iniciar sesión:', refreshRolesError);
         }
         
-        // Si es un usuario de Microsoft, intentamos refrescar sus datos
-        if (user.providerData.some(p => p.providerId === 'microsoft.com')) {
-          debugLog('Usuario Microsoft detectado, refrescando datos...');
-          try {
-            // Importamos dinámicamente para evitar dependencias circulares
-            const { refreshMicrosoftUserData, getUserProfile } = await import('../services/microsoftService');
-            
-            // Intentar refrescar los datos del usuario
-            const refreshedData = await refreshMicrosoftUserData();
-            debugLog('Datos refrescados con éxito:', refreshedData);
-            
-            // Cargar el perfil completo después de refrescar
-            const profile = await getUserProfile();
-            setUserProfile(profile);
-            debugLog('Perfil de usuario actualizado después de refrescar:', profile);
-          } catch (refreshError) {
-            console.error('Error al refrescar datos de Microsoft:', refreshError);
-            // No mostramos este error al usuario para no impactar la experiencia
-          }
-        }
-        
         try {
           const { getUserProfile } = await import('../services/microsoftService');
           const userProfile = await getUserProfile();
@@ -449,10 +428,31 @@ export const AuthProvider = ({ children }) => {
           setUserRoles(['cliente']);
           toast.error('Error al cargar tu perfil. Se te ha asignado el rol de cliente por defecto.');
         }
+
+        // Refrescar datos de Microsoft en segundo plano sin bloquear la carga de la app.
+        if (user.providerData.some(p => p.providerId === 'microsoft.com')) {
+          setTimeout(async () => {
+            if (!isMounted) return;
+
+            try {
+              const { refreshMicrosoftUserData, getUserProfile } = await import('../services/microsoftService');
+              await refreshMicrosoftUserData();
+
+              if (!isMounted) return;
+              const refreshedProfile = await getUserProfile();
+              if (isMounted) {
+                setUserProfile(refreshedProfile);
+              }
+            } catch (refreshError) {
+              console.error('Error al refrescar datos de Microsoft en segundo plano:', refreshError);
+            }
+          }, 0);
+        }
       } else {
         setUserRoles([]);
         setAccessLevel('basico');
-            }
+        setUserProfile(null);
+      }
       
       setLoading(false);
     };
@@ -460,7 +460,10 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, handleAuthChange);
 
     // Limpiar el observer cuando se desmonte el componente
-    return unsubscribe;
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []); // Quitamos refreshUserRoles para evitar dependencia circular
 
   // Valores proporcionados por el contexto
@@ -469,6 +472,7 @@ export const AuthProvider = ({ children }) => {
     userRoles,
     accessLevel,
     userProfile,
+    loading,
     signInWithMicrosoft,
     signInWithEmail,
     logout,

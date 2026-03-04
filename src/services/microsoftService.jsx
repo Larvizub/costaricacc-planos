@@ -3,7 +3,7 @@
  */
 import { auth, db } from '../firebase/firebaseConfig';
 import { getUserData, getUserProfilePhoto } from './microsoftGraphService';
-import { ref, get, set } from 'firebase/database';
+import { ref, get, set, update } from 'firebase/database';
 import { toast } from 'react-toastify';
 
 /**
@@ -111,12 +111,12 @@ export const getUserProfile = async () => {
               displayName: profileData.displayName
             });
             
-            await set(userRef, {
+            await update(userRef, {
               department: profileData.department,
               jobTitle: profileData.jobTitle,
               displayName: profileData.displayName,
               updatedAt: new Date().toISOString()
-            }, { merge: true });
+            });
           }
         
         // Obtener foto de perfil
@@ -126,7 +126,7 @@ export const getUserProfile = async () => {
           
           // Actualizar foto en Firebase si cambió
           if (photoURL !== userData.photo) {
-            await set(userRef, { photo: photoURL }, { merge: true });
+            await update(userRef, { photo: photoURL });
           }
         }
       } catch (graphError) {
@@ -235,11 +235,11 @@ export const refreshMicrosoftUserData = async () => {
     if (graphData) {
       // Actualizar en Firebase
       const userRef = ref(db, `users/${currentUser.uid}`);
-      await set(userRef, {
+      await update(userRef, {
         department: graphData.department,
         jobTitle: graphData.jobTitle,
         updatedAt: new Date().toISOString()
-      }, { merge: true });
+      });
       
       return graphData;
     }
