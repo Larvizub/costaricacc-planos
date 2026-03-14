@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaUser, FaSignOutAlt, FaBars, FaTimes, FaHome, FaFileAlt, FaMapMarkedAlt, FaUsers, FaBell } from 'react-icons/fa';
+import { FaUser, FaSignOutAlt, FaUsers, FaBell } from 'react-icons/fa';
 import { theme } from '../styles/GlobalStyles';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
@@ -10,7 +10,10 @@ const NavbarContainer = styled.header`
   background-color: #fff;
   box-shadow: ${theme.shadows.small};
   padding: 0 ${theme.spacing.lg};
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
+  width: 100%;
   top: 0;
   z-index: 100;
 `;
@@ -19,22 +22,12 @@ const NavbarContent = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 70px;
+  height: 60px;
 `;
 
 const NavbarLogo = styled.div`
   display: flex;
   align-items: center;
-`;
-
-const NavMenu = styled.nav`
-  display: flex;
-  align-items: center;
-  
-  @media (max-width: ${theme.breakpoints.sm}) {
-    /* En móviles pequeños, ocultamos el menú superior (usaremos BottomNav) */
-    display: none !important;
-  }
 `;
 
 const NavItem = styled(Link)`
@@ -99,7 +92,7 @@ const UserAvatar = styled.div`
 
 const UserMenuDropdown = styled.div`
   position: absolute;
-  top: 60px;
+  top: 54px;
   right: ${theme.spacing.lg};
   background-color: #fff;
   box-shadow: ${theme.shadows.medium};
@@ -148,20 +141,6 @@ const UserMenuButton = styled.button`
   }
 `;
 
-const MenuToggle = styled.button`
-  display: none; /* ocultamos el botón hamburguesa por defecto */
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: ${theme.colors.text};
-  font-size: 1.5rem;
-  
-  /* Forzadamente oculto en móvil para usar BottomNav */
-  @media (max-width: ${theme.breakpoints.md}) {
-    display: none;
-  }
-`;
-
 const Divider = styled.div`
   height: 1px;
   background-color: ${theme.colors.border};
@@ -170,16 +149,11 @@ const Divider = styled.div`
 
 const Navbar = () => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { currentUser, userProfile, logout, hasRole } = useAuth();
   const navigate = useNavigate();
   
   const toggleUserMenu = () => {
     setUserMenuOpen(!userMenuOpen);
-  };
-  
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
   };
   
   const handleLogout = async () => {
@@ -203,25 +177,6 @@ const Navbar = () => {
             <Logo width="100px" />
           </Link>
         </NavbarLogo>
-        
-        <MenuToggle onClick={toggleMobileMenu}>
-          {mobileMenuOpen ? <FaTimes /> : <FaBars />}
-        </MenuToggle>
-        
-        <NavMenu isOpen={mobileMenuOpen}>
-          <NavItem to="/" onClick={() => setMobileMenuOpen(false)}>
-            <FaHome /> Inicio
-          </NavItem>
-          <NavItem to="/solicitudes" onClick={() => setMobileMenuOpen(false)}>
-            <FaFileAlt /> Solicitudes
-          </NavItem>
-          <NavItem to="/planos" onClick={() => setMobileMenuOpen(false)}>
-            <FaMapMarkedAlt /> Planos
-          </NavItem>
-          <NavItem to="/usuarios" onClick={() => setMobileMenuOpen(false)}>
-            <FaUsers /> Usuarios
-          </NavItem>
-        </NavMenu>
         
         <NavActions>
           {currentUser ? (

@@ -3,7 +3,9 @@ import styled from 'styled-components';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import BottomNav from './BottomNav';
+import FloatingSidebar from './FloatingSidebar';
 import { theme } from '../styles/GlobalStyles';
+import { useAuth } from '../context/AuthContext';
 
 const LayoutContainer = styled.div`
   display: flex;
@@ -20,6 +22,7 @@ const MainContent = styled.main`
   flex-direction: column;
   width: 100%; /* Ocupar todo el ancho */
   align-items: center;
+  padding-top: 60px;
 `;
 
 const ContentWrapper = styled.div`
@@ -27,6 +30,7 @@ const ContentWrapper = styled.div`
   width: 100%;
   max-width: 1200px;
   padding: ${theme.spacing.lg};
+  padding-left: ${({ $withSidebar }) => ($withSidebar ? 'calc(96px + 24px)' : theme.spacing.lg)};
   margin: 0 auto;
   
   @media (max-width: ${theme.breakpoints.md}) {
@@ -50,12 +54,16 @@ const PageTitle = styled.h1`
 `;
 
 const Layout = ({ children, title }) => {
+  const { currentUser } = useAuth();
+  const showFloatingSidebar = Boolean(currentUser);
+
   return (
     <LayoutContainer>
       <Navbar />
+      {showFloatingSidebar && <FloatingSidebar />}
       
       <MainContent>
-        <ContentWrapper>
+        <ContentWrapper $withSidebar={showFloatingSidebar}>
           {title && <PageTitle>{title}</PageTitle>}
           {children}
         </ContentWrapper>
