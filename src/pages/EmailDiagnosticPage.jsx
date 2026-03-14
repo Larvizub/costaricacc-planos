@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import emailNotificationService from '../services/emailNotificationService';
-import { APPROVAL_AREAS } from '../config/emailConfig';
 
 const EmailDiagnosticPage = () => {
   //
@@ -83,17 +82,10 @@ const EmailDiagnosticPage = () => {
       
       {/* Configuración */}
       <Card>
-        <h2>📋 Áreas de Aprobación</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-          {Object.entries(APPROVAL_AREAS).map(([key, area]) => (
-            <div key={key} style={{ marginBottom: '10px' }}>
-              <strong>{area.name}:</strong>
-              <div style={{ fontSize: '14px', color: '#666' }}>
-                {area.emails.join(', ')}
-              </div>
-            </div>
-          ))}
-        </div>
+          <h2>📋 Grupos de Aprobación</h2>
+          <p style={{ fontSize: '14px', color: '#666' }}>
+            Los correos ya no se toman de configuración estática. Se obtienen desde los usuarios que tengan asignado cada grupo en <strong>userGroups</strong>.
+          </p>
       </Card>
 
       {/* Pruebas */}
@@ -170,7 +162,7 @@ const EmailDiagnosticPage = () => {
           <ul>
             <li>Prueba el envío de correos para nuevas solicitudes</li>
             <li>Prueba el envío de correos para cambios de estado</li>
-            <li>Muestra los emails configurados para cada área de aprobación</li>
+            <li>Valida la resolución dinámica de destinatarios por grupo de aprobación</li>
           </ul>
           
           <h3>Si las pruebas fallan:</h3>

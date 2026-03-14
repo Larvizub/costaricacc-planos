@@ -14,7 +14,6 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import Alert from '../components/Alert';
 import FileUploader from '../components/FileUploader';
-import { APPROVAL_AREAS } from '../config/emailConfig';
 import ApprovalFlow, { approvalGroups } from '../components/ApprovalFlow';
 import { useAuth } from '../context/AuthContext';
 import { formatDate, formatDateTime } from '../utils/formatters';
@@ -777,7 +776,7 @@ const DetalleSolicitudPage = () => {
                      !group.conditionalService || 
                      solicitud.serviciosContratados.includes(group.conditionalService);
             })
-          : Object.keys(APPROVAL_AREAS);
+          : Object.keys(approvalGroups);
           
         // Asegurar que pasamos claves (strings)
         const normalizedRequiredGroups = Array.isArray(requiredGroups) && requiredGroups.length > 0 && typeof requiredGroups[0] === 'string'

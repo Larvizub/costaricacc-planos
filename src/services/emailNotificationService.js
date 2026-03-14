@@ -1,10 +1,95 @@
-import { APPROVAL_AREAS, NOTIFICATION_TYPES, EMAIL_SUBJECTS } from '../config/emailConfig';
+import { NOTIFICATION_TYPES, EMAIL_SUBJECTS } from '../config/emailConfig';
 import { sendEmail } from './microsoftGraphEmailService';
+import { db } from '../firebase/firebaseConfig';
+import { ref, get } from 'firebase/database';
 
 class EmailNotificationService {
   constructor() {
     this.initialized = false;
     this.init();
+  }
+
+  normalizeGroupList(userGroups) {
+    if (Array.isArray(userGroups)) {
+      return userGroups.map(group => String(group).trim()).filter(Boolean);
+    }
+
+    if (typeof userGroups === 'string') {
+      return userGroups.split(',').map(group => group.trim()).filter(Boolean);
+    }
+
+    return [];
+  }
+
+  async getUsersByApprovalGroup(areaKey) {
+    try {
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+
+      if (!snapshot.exists()) {
+        return [];
+      }
+
+      const usersData = snapshot.val();
+      const users = Object.values(usersData || {});
+
+      return users
+        .filter(user => {
+          const groups = this.normalizeGroupList(user?.userGroups);
+          return groups.includes(areaKey);
+        })
+        .map(user => String(user?.email || '').trim().toLowerCase())
+        .filter(Boolean);
+    } catch (error) {
+      console.error(`❌ Error consultando usuarios del grupo ${areaKey}:`, error);
+      return [];
+    }
+  }
+
+  async getAllApprovalGroups() {
+    try {
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+
+      if (!snapshot.exists()) {
+        return [];
+      }
+
+      const usersData = snapshot.val();
+      const users = Object.values(usersData || {});
+      const groupsSet = new Set();
+
+      users.forEach(user => {
+        const groups = this.normalizeGroupList(user?.userGroups);
+        groups.forEach(group => groupsSet.add(group));
+      });
+
+      return Array.from(groupsSet);
+    } catch (error) {
+      console.error('❌ Error obteniendo lista de grupos de aprobacion:', error);
+      return [];
+    }
+  }
+
+  getAreaColor(areaKey) {
+    // Color estable derivado del nombre del grupo para mantener consistencia visual sin configuracion hardcodeada.
+    const key = String(areaKey || 'default');
+    let hash = 0;
+    for (let i = 0; i < key.length; i += 1) {
+      hash = key.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 60%, 45%)`;
+  }
+
+  getAreaName(areaKey) {
+    if (!areaKey) return 'Grupo de Aprobacion';
+    return String(areaKey)
+      .split('_')
+      .filter(Boolean)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 
   init() {
@@ -34,7 +119,7 @@ class EmailNotificationService {
     // Mostrar siempre el correo del solicitante, usando todas las variantes posibles
     const displayApplicantEmail = applicantEmail || createdByEmail || 'No especificado';
 
-    const areaColor = APPROVAL_AREAS[data.areaKey]?.color || '#3498db';
+    const areaColor = this.getAreaColor(data.areaKey);
 
     return `
   <!DOCTYPE html>
@@ -176,6 +261,10 @@ class EmailNotificationService {
       normalizedAreas = areas.slice();
     }
 
+    if (normalizedAreas.length === 0) {
+      normalizedAreas = await this.getAllApprovalGroups();
+    }
+
     console.log('�📧 Enviando notificaciones a áreas (normalizadas):', {
       areas: normalizedAreas,
       originalAreas: areas,
@@ -191,23 +280,32 @@ class EmailNotificationService {
         continue;
       }
 
-      const area = APPROVAL_AREAS[areaKey];
-      if (!area) {
-        console.warn(`⚠️ Área no encontrada en la configuración: ${areaKey}`);
-        results.push({ areaKey, success: false, error: 'Area not found in APPROVAL_AREAS' });
+      const areaName = this.getAreaName(areaKey);
+
+      const groupUsersEmails = await this.getUsersByApprovalGroup(areaKey);
+
+      // Usar unicamente los usuarios reales asignados al grupo de aprobacion.
+      const recipientEmails = groupUsersEmails
+        .map(email => String(email).trim().toLowerCase())
+        .filter(Boolean)
+        .filter((email, index, arr) => arr.indexOf(email) === index);
+
+      if (recipientEmails.length === 0) {
+        console.warn(`⚠️ No hay destinatarios para el grupo ${areaName} (${areaKey})`);
+        results.push({ areaKey, success: false, error: 'No recipients found for approval group' });
         continue;
       }
 
-      console.log(`📍 Procesando área: ${area.name} (${areaKey}) - ${area.emails.length} emails`);
+      console.log(`📍 Procesando área: ${areaName} (${areaKey}) - ${recipientEmails.length} destinatarios`);
 
-      for (const email of area.emails) {
+      for (const email of recipientEmails) {
         try {
           console.log(`📤 Enviando correo a: ${email}`);
           const result = await this.sendNotificationEmail({
             ...requestData,
             recipientEmail: email,
             areaKey,
-            areaName: area.name,
+            areaName,
             notificationType
           });
           console.log(`✅ Correo enviado exitosamente a ${email}:`, result);
@@ -290,8 +388,8 @@ class EmailNotificationService {
    * Notifica nueva solicitud
    */
   async notifyNewRequest(requestData) {
-    // Usar solo los grupos requeridos para esta solicitud específica
-    const areas = requestData.approvalAreas || Object.keys(APPROVAL_AREAS);
+    // Usar grupos de la solicitud; si no vienen, se resolveran dinamicamente desde userGroups.
+    const areas = requestData.approvalAreas;
     return await this.sendNotificationToAreas(
       requestData,
       NOTIFICATION_TYPES.NEW_REQUEST,
@@ -309,14 +407,14 @@ class EmailNotificationService {
       approvalAreas: requestData.approvalAreas
     });
 
-    // Usar solo los grupos requeridos para esta solicitud específica
-    const areas = requestData.approvalAreas || Object.keys(APPROVAL_AREAS);
+    // Usar grupos de la solicitud; si no vienen, se resolveran dinamicamente desde userGroups.
+    const areas = requestData.approvalAreas;
     const notificationType = this.getNotificationTypeByStatus(requestData.status);
 
     console.log('📧 Configuración de envío:', {
       areas,
       notificationType,
-      totalAreas: areas.length
+      totalAreas: Array.isArray(areas) ? areas.length : 'dinamico'
     });
 
     return await this.sendNotificationToAreas({
@@ -329,8 +427,8 @@ class EmailNotificationService {
    * Notifica nuevo comentario
    */
   async notifyNewComment(requestData, comment) {
-    // Usar solo los grupos requeridos para esta solicitud específica
-    const areas = requestData.approvalAreas || Object.keys(APPROVAL_AREAS);
+    // Usar grupos de la solicitud; si no vienen, se resolveran dinamicamente desde userGroups.
+    const areas = requestData.approvalAreas;
 
     return await this.sendNotificationToAreas({
       ...requestData,
@@ -424,14 +522,25 @@ class EmailNotificationService {
       console.warn('No se puede enviar notificación: email del solicitante no disponible');
     }
 
-    // Notificar a todos los involucrados en el flujo (todas las áreas)
-    const areas = approvalAreas || Object.keys(APPROVAL_AREAS);
+    // Notificar a todos los involucrados en el flujo usando unicamente grupos de aprobacion.
+    const areas = Array.isArray(approvalAreas) && approvalAreas.length > 0
+      ? approvalAreas
+      : await this.getAllApprovalGroups();
+    const allGroupRecipients = new Set();
+
     for (const areaKey of areas) {
-      const area = APPROVAL_AREAS[areaKey];
-      if (!area) continue;
-      for (const email of area.emails) {
+      const groupUsersEmails = await this.getUsersByApprovalGroup(areaKey);
+
+      for (const email of groupUsersEmails) {
+        allGroupRecipients.add(String(email).trim().toLowerCase());
+      }
+    }
+
+    const applicantEmailNormalized = String(createdByEmail || '').trim().toLowerCase();
+
+    for (const email of allGroupRecipients) {
         // Evitar duplicar el envío al solicitante si ya se notificó arriba
-        if (email === createdByEmail) continue;
+      if (email === applicantEmailNormalized) continue;
         try {
           const result = await this.sendApprovalNotificationWithDownloads({
             requestId,
@@ -452,7 +561,6 @@ class EmailNotificationService {
           console.error(`❌ Error enviando notificación de aprobación final a ${email}:`, error);
           results.push({ email, success: false, error: error.message });
         }
-      }
     }
 
     return results;

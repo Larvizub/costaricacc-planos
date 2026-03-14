@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import emailNotificationService from '../services/emailNotificationService';
-import { APPROVAL_AREAS } from '../config/emailConfig';
 
 export const useEmailNotifications = () => {
   const [loading, setLoading] = useState(false);
@@ -37,7 +36,7 @@ export const useEmailNotifications = () => {
           result = await emailNotificationService.sendNotificationToAreas(
             data,
             options.notificationType,
-            options.areas || Object.keys(APPROVAL_AREAS)
+            options.areas
           );
           break;
           

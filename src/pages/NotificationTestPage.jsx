@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import emailNotificationService from '../services/emailNotificationService';
-import { APPROVAL_AREAS } from '../config/emailConfig';
 
 const NotificationTestPage = () => {
   const [logs, setLogs] = useState([]);
@@ -225,23 +224,9 @@ const NotificationTestPage = () => {
       {/* Configuración actual */}
       <Card>
         <h2>⚙️ Configuración Actual</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-          <div>
-            <h3>Áreas de Notificación</h3>
-            {Object.entries(APPROVAL_AREAS).map(([key, area]) => (
-              <div key={key} style={{ marginBottom: '15px', padding: '10px', background: '#f8f9fa', borderRadius: '4px' }}>
-                <strong style={{ color: area.color }}>{area.name}</strong>
-                <div style={{ fontSize: '12px', marginTop: '5px' }}>
-                  {area.emails.map((email, index) => (
-                    <div key={index}>📧 {email}</div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-
-        </div>
+        <p style={{ fontSize: '14px', color: '#666' }}>
+          Los destinatarios se resuelven dinámicamente desde <strong>users.userGroups</strong> en Firebase.
+        </p>
       </Card>
 
       {/* Logs en tiempo real */}
