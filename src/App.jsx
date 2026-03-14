@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
-import { ThemeProvider } from 'styled-components';
+import styled, { ThemeProvider, keyframes } from 'styled-components';
 import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider } from './context/AuthContext';
 import GlobalStyles, { theme } from './styles/GlobalStyles';
@@ -17,7 +17,34 @@ const Profile = lazy(() => import('./pages/Profile'));
 const EditProfilePage = lazy(() => import('./pages/EditProfilePage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 
-const RouteLoader = () => <div style={{ padding: '16px' }}>Cargando modulo...</div>;
+const spin = keyframes`
+  to {
+    transform: rotate(360deg);
+  }
+`;
+
+const RouteLoaderContainer = styled.div`
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${theme.colors.background};
+`;
+
+const RouteSpinner = styled.div`
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 5px solid rgba(0, 131, 14, 0.2);
+  border-top-color: ${theme.colors.primary};
+  animation: ${spin} 0.8s linear infinite;
+`;
+
+const RouteLoader = () => (
+  <RouteLoaderContainer aria-label="Cargando módulo">
+    <RouteSpinner />
+  </RouteLoaderContainer>
+);
 
 function App() {
   return (
