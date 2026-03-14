@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Legend, LabelList } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, LabelList } from 'recharts';
 import dayjs from 'dayjs';
 import { theme } from '../styles/GlobalStyles';
 import Layout from '../components/Layout';
@@ -10,6 +10,8 @@ import { ref, get } from 'firebase/database';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Logo from '../components/Logo';
+
+const CHART_HEIGHT = 280;
 
 // Estilos para la sección del banner
 const HeroSection = styled.section`
@@ -119,6 +121,24 @@ const FeatureCard = styled(Card)`
   }
 `;
 
+const ChartContainer = styled.div`
+  width: 100%;
+  height: ${CHART_HEIGHT}px;
+  min-width: 0;
+  min-height: 0;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    height: 260px;
+  }
+`;
+
+const ChartHint = styled.p`
+  margin-top: ${theme.spacing.sm};
+  margin-bottom: 0;
+  font-size: 0.85rem;
+  color: ${theme.colors.textLight};
+`;
+
 
 const FeatureTitle = styled.h3`
   font-size: 1.2rem;
@@ -209,7 +229,19 @@ const HomePage = () => {
     const usuario = s.createdByEmail || s.createdByName || 'Desconocido';
     usuariosSolicitudes[usuario] = (usuariosSolicitudes[usuario] || 0) + 1;
   });
-  const usuariosData = Object.keys(usuariosSolicitudes).map(usuario => ({ usuario, cantidad: usuariosSolicitudes[usuario] }));
+  const usuariosData = Object.keys(usuariosSolicitudes)
+    .map(usuario => ({ usuario, cantidad: usuariosSolicitudes[usuario] }))
+    .sort((a, b) => b.cantidad - a.cantidad);
+
+  const maxUsuariosEnGrafico = 10;
+  const topUsuariosData = usuariosData.slice(0, maxUsuariosEnGrafico).map((item) => {
+    const username = item.usuario.includes('@') ? item.usuario.split('@')[0] : item.usuario;
+    const label = username.length > 18 ? `${username.slice(0, 18)}...` : username;
+    return {
+      ...item,
+      label,
+    };
+  });
 
   const COLORS = ['#00830e', '#3498db', '#f39c12', '#e74c3c', '#9b59b6'];
 
@@ -241,54 +273,66 @@ const HomePage = () => {
           <FeaturesGrid>
             <FeatureCard>
               <FeatureTitle>Solicitudes por Estado</FeatureTitle>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label>
-                    {statusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              <ChartContainer>
+                <ResponsiveContainer width="100%" height="100%" minHeight={260}>
+                  <PieChart>
+                    <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                      {statusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             </FeatureCard>
             <FeatureCard>
               <FeatureTitle>Solicitudes por Mes (últimos 6 meses)</FeatureTitle>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={solicitudesPorMes}>
-                  <XAxis dataKey="month" />
-                  <YAxis allowDecimals={false} />
-                  <Bar dataKey="count" fill="#00830e" />
-                  <RechartsTooltip />
-                  <Legend />
-                </BarChart>
-              </ResponsiveContainer>
+              <ChartContainer>
+                <ResponsiveContainer width="100%" height="100%" minHeight={260}>
+                  <BarChart data={solicitudesPorMes} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+                    <XAxis dataKey="month" />
+                    <YAxis allowDecimals={false} />
+                    <Bar dataKey="count" fill="#00830e" radius={[6, 6, 0, 0]} />
+                    <RechartsTooltip />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             </FeatureCard>
             <FeatureCard>
               <FeatureTitle>Tiempo de Aprobación por Departamento (horas promedio)</FeatureTitle>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={tiemposPorArea}>
-                  <XAxis dataKey="area" tick={{ fontSize: 12 }} interval={0} angle={-20} textAnchor="end" />
-                  <YAxis allowDecimals={false} />
-                  <Bar dataKey="horas" name="Horas promedio" fill="#f39c12">
-                    <LabelList dataKey="horas" position="top" formatter={value => `${value}h`} />
-                  </Bar>
-                  <RechartsTooltip formatter={(value) => [`${value}h`, 'Promedio']} />
-                  <Legend />
-                </BarChart>
-              </ResponsiveContainer>
+              <ChartContainer>
+                <ResponsiveContainer width="100%" height="100%" minHeight={260}>
+                  <BarChart data={tiemposPorArea} layout="vertical" margin={{ top: 12, right: 30, left: 80, bottom: 8 }}>
+                    <XAxis type="number" allowDecimals={false} />
+                    <YAxis type="category" dataKey="area" width={130} tick={{ fontSize: 12 }} />
+                    <Bar dataKey="horas" name="Horas promedio" fill="#f39c12" radius={[0, 6, 6, 0]}>
+                      <LabelList dataKey="horas" position="right" formatter={value => `${value}h`} />
+                    </Bar>
+                    <RechartsTooltip formatter={(value) => [`${value}h`, 'Promedio']} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             </FeatureCard>
             <FeatureCard>
               <FeatureTitle>Solicitudes por Usuario</FeatureTitle>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={usuariosData}>
-                  <XAxis dataKey="usuario" tick={{ fontSize: 12 }} interval={0} angle={-30} textAnchor="end" />
-                  <YAxis allowDecimals={false} />
-                  <Bar dataKey="cantidad" fill="#3498db" />
-                  <RechartsTooltip />
-                  <Legend />
-                </BarChart>
-              </ResponsiveContainer>
+              <ChartContainer>
+                <ResponsiveContainer width="100%" height="100%" minHeight={260}>
+                  <BarChart data={topUsuariosData} layout="vertical" margin={{ top: 12, right: 24, left: 60, bottom: 8 }}>
+                    <XAxis type="number" allowDecimals={false} />
+                    <YAxis type="category" dataKey="label" width={140} tick={{ fontSize: 12 }} />
+                    <Bar dataKey="cantidad" fill="#3498db" name="Solicitudes" radius={[0, 6, 6, 0]}>
+                      <LabelList dataKey="cantidad" position="right" />
+                    </Bar>
+                    <RechartsTooltip formatter={(value, _, item) => [value, item?.payload?.usuario || 'Usuario']} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+              {usuariosData.length > maxUsuariosEnGrafico && (
+                <ChartHint>
+                  Mostrando top {maxUsuariosEnGrafico} de {usuariosData.length} usuarios con solicitudes.
+                </ChartHint>
+              )}
             </FeatureCard>
           </FeaturesGrid>
         )}

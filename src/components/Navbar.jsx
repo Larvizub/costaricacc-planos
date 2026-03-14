@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FaUser, FaSignOutAlt, FaUsers, FaBell } from 'react-icons/fa';
 import { theme } from '../styles/GlobalStyles';
 import { useAuth } from '../context/AuthContext';
@@ -151,6 +151,8 @@ const Navbar = () => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { currentUser, userProfile, logout, hasRole } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isLoginPage = location.pathname === '/login';
   
   const toggleUserMenu = () => {
     setUserMenuOpen(!userMenuOpen);
@@ -213,7 +215,7 @@ const Navbar = () => {
               </UserMenuDropdown>
             </>
           ) : (
-            <NavItem to="/login">Iniciar sesión</NavItem>
+            !isLoginPage && <NavItem to="/login">Iniciar sesión</NavItem>
           )}
         </NavActions>
       </NavbarContent>
