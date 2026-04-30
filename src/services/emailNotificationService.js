@@ -192,6 +192,16 @@ class EmailNotificationService {
                             <div style="font-weight: 600; color: #333; margin-bottom: 5px;">${comment.author}</div>
                             <div style="color: #666; font-size: 14px; margin-bottom: 5px;">${comment.date}</div>
                             <div style="color: #555;">${comment.text}</div>
+                            ${comment.images && comment.images.length > 0 ? `
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+                                ${comment.images.map(url => `
+                                    <a href="${url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; line-height: 0;">
+                                        <img src="${url}" alt="Imagen adjunta" width="140" height="140"
+                                            style="width: 140px; height: 140px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd;" />
+                                    </a>
+                                `).join('')}
+                            </div>
+                            ` : ''}
                         </div>
                     `).join('')}
                 </div>

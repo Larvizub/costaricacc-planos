@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -6,7 +6,7 @@ import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase/firebaseConfig';
 import { 
   FaArrowLeft, FaDownload, FaCheck, FaTimes, FaSpinner, FaClock, 
-  FaListAlt, FaComments, FaFile, FaUsers 
+  FaListAlt, FaComments, FaFile, FaUsers, FaImage
 } from 'react-icons/fa';
 import { theme } from '../styles/GlobalStyles';
 import Layout from '../components/Layout';
@@ -20,6 +20,7 @@ import { formatDate, formatDateTime } from '../utils/formatters';
 import { updateRecord, uploadFile } from '../utils/firebaseHelpers';
 import useAsync from '../hooks/useAsync';
 import emailNotificationService from '../services/emailNotificationService';
+import ImageViewer from '../components/ImageViewer';
 import { NOTIFICATION_TYPES } from '../config/emailConfig';
 
 // Estilos para el contenedor principal
@@ -254,6 +255,99 @@ const CommentForm = styled.form`
   }
 `;
 
+const CommentFormActions = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.md};
+  flex-wrap: wrap;
+`;
+
+const ImageUploadLabel = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  cursor: pointer;
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  border: 1px dashed ${theme.colors.border};
+  border-radius: ${theme.borderRadius.medium};
+  color: ${theme.colors.textLight};
+  font-size: 0.875rem;
+  transition: all ${theme.transitions.default};
+  user-select: none;
+
+  &:hover {
+    border-color: ${theme.colors.primary};
+    color: ${theme.colors.primary};
+    background-color: ${theme.colors.primary}10;
+  }
+`;
+
+const ImagePreviewGrid = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+`;
+
+const PreviewItem = styled.div`
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: ${theme.borderRadius.small};
+  overflow: visible;
+
+  img {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: ${theme.borderRadius.small};
+    border: 1px solid ${theme.colors.border};
+    display: block;
+  }
+
+  button {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: ${theme.colors.error};
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    padding: 0;
+    line-height: 1;
+  }
+`;
+
+const CommentImages = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.sm};
+`;
+
+const CommentThumb = styled.img`
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: ${theme.borderRadius.small};
+  border: 1px solid ${theme.colors.border};
+  cursor: pointer;
+  transition: all ${theme.transitions.default};
+
+  &:hover {
+    opacity: 0.85;
+    transform: scale(1.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  }
+`;
+
 const ApprovalActions = styled.div`
   display: flex;
   gap: ${theme.spacing.md};
@@ -448,6 +542,38 @@ const DetalleSolicitudPage = () => {
   const [archivos, setArchivos] = useState([]);
   const [approvalLoading, setApprovalLoading] = useState(false);
   const [userApprovalGroups, setUserApprovalGroups] = useState([]);
+
+  // Estados para imágenes en comentarios
+  const [comentarioFiles, setComentarioFiles] = useState([]);
+  const [comentarioPreviews, setComentarioPreviews] = useState([]);
+  const [imageViewer, setImageViewer] = useState(null); // { images, initialIndex }
+  const imageInputRef = useRef(null);
+
+  // Limpiar object URLs al desmontar
+  useEffect(() => {
+    return () => {
+      comentarioPreviews.forEach((p) => URL.revokeObjectURL(p.blobUrl));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCommentImageSelect = useCallback((e) => {
+    const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    setComentarioFiles((prev) => [...prev, ...files]);
+    const newPreviews = files.map((f) => ({ blobUrl: URL.createObjectURL(f), name: f.name }));
+    setComentarioPreviews((prev) => [...prev, ...newPreviews]);
+    // resetear el input para permitir volver a seleccionar el mismo archivo
+    e.target.value = '';
+  }, []);
+
+  const handleRemovePreview = useCallback((index) => {
+    setComentarioPreviews((prev) => {
+      URL.revokeObjectURL(prev[index].blobUrl);
+      return prev.filter((_, i) => i !== index);
+    });
+    setComentarioFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
   
   // Cargar datos de la solicitud
   useEffect(() => {
@@ -749,14 +875,25 @@ const DetalleSolicitudPage = () => {
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     
-    if (!comentario.trim()) return;
+    if (!comentario.trim() && comentarioFiles.length === 0) return;
     
     try {
+      // Subir imágenes adjuntas al comentario
+      let uploadedImageUrls = [];
+      if (comentarioFiles.length > 0) {
+        const uploadPromises = comentarioFiles.map(async (file) => {
+          const path = `solicitudes/${id}/comentarios/${Date.now()}_${file.name}`;
+          return await uploadFile(path, file);
+        });
+        uploadedImageUrls = await Promise.all(uploadPromises);
+      }
+
       const newComment = {
         autor: currentUser.uid,
         autor_nombre: currentUser.displayName || currentUser.email,
         contenido: comentario,
-        fecha: new Date().toISOString()
+        fecha: new Date().toISOString(),
+        ...(uploadedImageUrls.length > 0 && { imagenes: uploadedImageUrls })
       };
       
       const comentariosActuales = solicitud.comentarios || [];
@@ -793,7 +930,8 @@ const DetalleSolicitudPage = () => {
         }, {
           author: currentUser.displayName || currentUser.email,
           date: new Date().toLocaleString(),
-          text: comentario
+          text: comentario,
+          images: uploadedImageUrls
         });
         console.log('Notificación de nuevo comentario enviada exitosamente');
       } catch (emailError) {
@@ -802,6 +940,10 @@ const DetalleSolicitudPage = () => {
       }
       
       setComentario('');
+      // Limpiar imágenes seleccionadas
+      comentarioPreviews.forEach((p) => URL.revokeObjectURL(p.blobUrl));
+      setComentarioFiles([]);
+      setComentarioPreviews([]);
       toast.success('Comentario agregado');
     } catch (err) {
       console.error('Error al agregar comentario:', err);
@@ -1261,7 +1403,22 @@ const DetalleSolicitudPage = () => {
                         <div className="author">{comentario.autor_nombre}</div>
                         <div className="date">{formatDateTime(comentario.fecha)}</div>
                       </div>
-                      <div className="comment-content">{comentario.contenido}</div>
+                      {comentario.contenido && (
+                        <div className="comment-content">{comentario.contenido}</div>
+                      )}
+                      {comentario.imagenes && comentario.imagenes.length > 0 && (
+                        <CommentImages>
+                          {comentario.imagenes.map((url, imgIdx) => (
+                            <CommentThumb
+                              key={imgIdx}
+                              src={url}
+                              alt={`Imagen ${imgIdx + 1}`}
+                              onClick={() => setImageViewer({ images: comentario.imagenes, initialIndex: imgIdx })}
+                              title="Clic para ampliar"
+                            />
+                          ))}
+                        </CommentImages>
+                      )}
                     </Comment>
                   ))}
                 </CommentsList>
@@ -1274,15 +1431,47 @@ const DetalleSolicitudPage = () => {
                   placeholder="Escribe un comentario..."
                   value={comentario}
                   onChange={(e) => setComentario(e.target.value)}
-                  required
                 />
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="submit-button"
-                >
-                  Enviar comentario
-                </Button>
+
+                {/* Previews de imágenes seleccionadas */}
+                {comentarioPreviews.length > 0 && (
+                  <ImagePreviewGrid>
+                    {comentarioPreviews.map((preview, idx) => (
+                      <PreviewItem key={idx}>
+                        <img src={preview.blobUrl} alt={preview.name} />
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePreview(idx)}
+                          title={`Quitar ${preview.name}`}
+                        >
+                          <FaTimes />
+                        </button>
+                      </PreviewItem>
+                    ))}
+                  </ImagePreviewGrid>
+                )}
+
+                <CommentFormActions>
+                  <ImageUploadLabel title="Adjuntar imagen">
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={handleCommentImageSelect}
+                    />
+                    <FaImage /> Agregar imagen
+                  </ImageUploadLabel>
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="submit-button"
+                  >
+                    Enviar comentario
+                  </Button>
+                </CommentFormActions>
               </CommentForm>
             </Card.Content>
           </Card>
@@ -1360,6 +1549,15 @@ const DetalleSolicitudPage = () => {
         </Section>
         
       </DetailContainer>
+
+      {/* Visor de imágenes (lightbox) */}
+      {imageViewer && (
+        <ImageViewer
+          images={imageViewer.images}
+          initialIndex={imageViewer.initialIndex}
+          onClose={() => setImageViewer(null)}
+        />
+      )}
     </Layout>
   );
 };
